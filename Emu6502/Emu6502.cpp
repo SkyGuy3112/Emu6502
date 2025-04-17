@@ -74,7 +74,10 @@ struct CPU
 
     // opcodes
     static constexpr Byte INS_LDA_IM = 0xA9, // Load Accumlator Immidiate mode opcode
-        INS_LDA_ZP = 0xA5;
+        INS_LDA_ZP = 0xA5,                   // Load Accumlator Zero Page opcode
+        INS_LDA_ZPX = 0xB5;                  // Load Accumlator Zero Page Indexed opcode
+
+
 
     void LDASetStatus()
     {
@@ -98,6 +101,14 @@ struct CPU
                 case INS_LDA_ZP:
                 {
                     Byte ZeroPageAddress = FetchByte(Cycles, memory);
+                    A = ReadByte(Cycles, ZeroPageAddress, memory);
+                    LDASetStatus();
+                }break;
+                case INS_LDA_ZPX:
+                {
+                    Byte ZeroPageAddress = FetchByte(Cycles, memory);
+                    ZeroPageAddress += X;
+                    Cycles--;
                     A = ReadByte(Cycles, ZeroPageAddress, memory);
                     LDASetStatus();
                 }break;
