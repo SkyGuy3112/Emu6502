@@ -32,6 +32,15 @@ struct Mem
     {
         return Data[Address];
     }
+
+    /* Writing 2 bytes*/
+    void WriteWord(Word Value, u32 Address, u32& Cycles)
+    {
+        Data[Address] = Value >> 8;
+        Data[Address + 1] = Value & 0xFF;
+        Cycles -= 2;
+    }
+
 };
 
 struct CPU
@@ -65,6 +74,18 @@ struct CPU
         return Data;
     }
 
+    Word FetchWord(u32& Cycles, Mem& memory)
+    {
+        // 6502 is little endian
+        Word Data = memory[PC];
+        PC++;
+        Data |= memory[PC]<<8;
+        PC++;
+        
+        Cycles-=2;
+        return Data;
+    }
+
     Byte ReadByte(u32& Cycles, Byte Address, Mem& memory)
     {
         Byte Data = memory[Address];
@@ -75,7 +96,8 @@ struct CPU
     // opcodes
     static constexpr Byte INS_LDA_IM = 0xA9, // Load Accumlator Immidiate mode opcode
         INS_LDA_ZP = 0xA5,                   // Load Accumlator Zero Page opcode
-        INS_LDA_ZPX = 0xB5;                  // Load Accumlator Zero Page Indexed opcode
+        INS_LDA_ZPX = 0xB5,                  // Load Accumlator Zero Page Indexed opcode
+        INS_JSR = 0x20;                        // Jump to Subroutine opcode
 
 
 
@@ -112,6 +134,14 @@ struct CPU
                     A = ReadByte(Cycles, ZeroPageAddress, memory);
                     LDASetStatus();
                 }break;
+                case INS_JSR:
+                {
+                    Word SubAddr = FetchWord(Cycles, memory);
+                    memory.WriteWord(PC - 1, SP, Cycles);
+                    SP++;
+                    PC = SubAddr;
+                    Cycles--;
+                }
                 default:
                 {
                     printf("Instruction not handled %d\n", Ins);
@@ -129,11 +159,14 @@ int main()
     cpu.Reset(mem);
     
     /* start - inline test program */
-    mem[0xFFFC] = CPU::INS_LDA_ZP;
+    mem[0xFFFC] = CPU::INS_JSR;
     mem[0xFFFD] = 0x42;
-    mem[0x0042] = 0x84;
+    mem[0xFFFE] = 0x42;
+    mem[0x4242] = CPU::INS_LDA_IM;
+    mem[0x4243] = 0x84;
     /* end - inline test program */
-    cpu.Execute(3, mem);
+    cpu.Execute(9, mem);
+    return 0;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
